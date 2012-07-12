@@ -2,10 +2,11 @@
 
 ; Six Card Cribbage
 
-(require games/cards racket/gui "base.rkt" "net.rkt" "game.rkt")
+(require games/cards racket/gui "base.rkt" "net.rkt" "gui.rkt")
 
-(table (make-table "Cribbage" 8 4.5))
-(send (table) show #t)
+; the instance of crib-gui must be created on early stage to avoid finishing this script before connection accomplished
+(define gui (new crib-gui))
+(send (get-field table gui) show #t)
 
 (define-syntax println
  (syntax-rules ()
@@ -35,13 +36,12 @@
 (case (net-mode)
  ('server
   (let ([s (current-seconds)])
-   (displayln "sending seed")
    (send (net-obj) send-value `(set-seed ,s))
    (random-seed s)
-   (game-main)))
+   (crib-main gui)))
  ('client
   (send (net-obj) add-handler 'set-seed
    (lambda (s)
     (random-seed s)
-    (game-main)))))
+    (crib-main gui)))))
 

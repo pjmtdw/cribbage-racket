@@ -1,12 +1,11 @@
 #lang racket
 (require srfi/1 srfi/26 games/cards racket/class)
 
-(provide start-game move-card-aligned net-port net-host net-mode net-obj table)
+(provide start-game move-card-aligned net-port net-host net-mode net-obj)
 (define net-port (make-parameter 12345))
 (define net-host (make-parameter "localhost"))
 (define net-mode (make-parameter #f))
 (define net-obj (make-parameter #f))
-(define table (make-parameter #f))
 
 ; (A A B B B C) -> ((A A) (B B B) (C))
 (define (group ls)
@@ -68,11 +67,11 @@
   (init-field [phase #f])
   (define/public (append-pile! card)
    (set! pile (append pile (list card))))
-  (define/public (select-crib! player-num cards)
+  (define/public (select-crib player-num cards)
    (define pl (list-ref players player-num))
    (send pl remove-cards! cards)
    (set! crib (append crib cards)))
-  (define/public (play-card! player-num card)
+  (define/public (play-card player-num card)
    (define pl (list-ref players player-num))
    (send pl set-cards-state! (list card) 'del) 
    (append-pile! card))
