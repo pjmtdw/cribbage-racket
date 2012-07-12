@@ -1,13 +1,12 @@
 #lang racket
 (require games/cards racket/gui "base.rkt")
+(provide crib-gui)
 
 (define-syntax region-field
  (syntax-rules ()
   ((_ r (body ...))
    (field [r (let ([x (make-region body ... #f)]) (send (get-field table this) add-region x) x)]))))
 
-
-(provide crib-gui crib-main)
 
 (define-values (c-width c-height)
  (let ([c (car (make-deck))])
@@ -33,20 +32,17 @@
    (when message-snip (send pasteboard delete message-snip))
    (when message
     (set! message-snip (make-object string-snip% message))
-    (send pasteboard insert message-snip 40 400 )))))
-
-(define (crib-main gui) 
- ; (start-game) must be called after (random-seed) function since both server and client have to use same seed.
- (set-field! game gui (start-game))
- (define-values (player-num opponent-num)
-  (case (net-mode)
-   ('server
-    (values 0 1))
-   ('client
-    (values 1 0))))
- (define game (get-field game gui))
- (define table (get-field table gui))
- (send game show-player-card table (get-field region-myown gui) player-num)
- (send game show-player-card table (get-field region-opponent gui) opponent-num)
- (send gui show-message "please choose two crib cards")
- (send table set-single-click-action (lambda (card) (send net-obj send-value (list 'seed (number->string (current-seconds)))))))
+    (send pasteboard insert message-snip 40 400 )))
+  (define/public (main) 
+   ; (start-game) must be called after (random-seed) function since both server and client have to use same seed.
+   (set-field! game this (start-game))
+   (define-values (player-num opponent-num)
+    (case (net-mode)
+     ('server
+      (values 0 1))
+     ('client
+      (values 1 0))))
+   (send game show-player-card table region-myown player-num)
+   (send game show-player-card table region-opponent opponent-num)
+   (show-message "please choose two crib cards")
+   (send table set-single-click-action (lambda (card) (send net-obj send-value (list 'seed (number->string (current-seconds)))))))))

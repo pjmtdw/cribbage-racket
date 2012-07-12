@@ -38,10 +38,10 @@
   (let ([s (current-seconds)])
    (send (net-obj) send-value `(set-seed ,s))
    (random-seed s)
-   (crib-main gui)))
+   (send gui main)))
  ('client
   (send (net-obj) add-handler 'set-seed
    (lambda (s)
     (random-seed s)
-    (crib-main gui)))))
+    (send gui main)))))
 

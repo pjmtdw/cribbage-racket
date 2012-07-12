@@ -39,9 +39,17 @@
   (init-field port)
   (init-field host)
   (define/public (start)
-   (let-values ([(in out) (tcp-connect host port)])
-    (set-field! sock-in this in)
-    (set-field! sock-out this out))
+   (let loop ()
+    (let-values ([(in out)
+                  (with-handlers ([exn:fail:network? (lambda(e) (values #f #f)) ]) (tcp-connect host port))
+                 ])
+     (if in
+      (begin
+       (set-field! sock-in this in)
+       (set-field! sock-out this out))
+      (begin 
+       (sleep 1)
+       (loop)))))
    (thread (lambda () (send this recv-thread))))))
 
 (define net-server%
