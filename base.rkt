@@ -2,11 +2,17 @@
 (require srfi/1 srfi/26 games/cards racket/class)
 
 (provide start-game net-port net-host net-mode net-obj
- card->hash hash->card)
+ card->hash hash->card cribs-per-player number-of-cribs cribs-per-player)
+
 (define net-port (make-parameter 12345))
 (define net-host (make-parameter "localhost"))
 (define net-mode (make-parameter #f))
 (define net-obj (make-parameter #f))
+
+(define cards-per-player 6)
+(define cribs-per-player 2)
+(define number-of-players 2)
+(define number-of-cribs (* number-of-players cribs-per-player))
 
 ; (A A B B B C) -> ((A A) (B B B) (C))
 (define (group ls)
@@ -29,6 +35,8 @@
   (init-field [score 0])
   (init-field [cards '()])
   (init-field [is-dealer #f])
+  (define/public (have-card? card)
+   (memf (lambda (x) (equal? card (car x))) cards))
   (define/public (append-cards! cds state)
    (set! cards (append cards (map (cut cons <> state) cds))))
   (define/public (remove-cards! cds)
@@ -44,16 +52,12 @@
     )
    (send table add-cards-to-region (map car cards) region))))
 
-(define cards-per-player 6)
-(define cribs-per-player 2)
-
 (define cards-hash #f)
 
 (define (card->hash card) (list (send card get-suit) (send card get-value)))
 (define (hash->card hash) (hash-ref cards-hash hash))
 (define (make-cards-hash cards)
  (set! cards-hash (make-hash (for/list ([c cards]) (cons (card->hash c) c)))))
-
 
 (define (start-game)
  (define cards (shuffle-list (make-deck) 7)); according to doc of games/cards, 7 is sufficient for shuffling list
@@ -75,6 +79,8 @@
   (init-field [players #f])
   (init-field [pile '()])
   (init-field [phase #f])
+  (define/public (card-owner card)
+   (for/or ([p players] [i (in-naturals)]) (if (send p have-card? card) i #f)))
   (define/public (append-pile! card)
    (set! pile (append pile (list card))))
   (define/public (select-crib player-num cards)
@@ -114,11 +120,5 @@
  (last
   (for/fold ([lst init-lst]) ([i nums])
    (define add-from (append (make-list (- i 1) 0) '(1) (take lst (- comb-sum i))))
-   (map + add-from lst))
-  ))
-
-(define (move-card-aligned table card region maxnum index)
- (define x (+ (region-x region) (* index (/ (region-w region) maxnum))))
- (define y (region-y region))
- (send table move-card card  x y))
-  
+   (map + add-from lst))))
+ 

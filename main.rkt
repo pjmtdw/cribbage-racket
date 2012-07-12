@@ -38,7 +38,7 @@
   (let ([s (current-seconds)])
    (send (net-obj) send-value `(set-seed ,s))
    (random-seed s)
-   (send gui main)))
+   (thread (lambda ()(send gui main)))))
  ('client
   (let ([t (current-thread)])
    (send (net-obj) add-handler 'set-seed
@@ -47,6 +47,6 @@
      (thread-send t 'seed-set-done) 
      )))
   (thread-receive)
-  (send gui main)
-  ))
+  (thread (lambda ()(send gui main))))
+  )
 
