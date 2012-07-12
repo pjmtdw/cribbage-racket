@@ -30,7 +30,7 @@
   (region-field region-opcrib (30 (* 0.4 c-height) crib-width c-height "opponent crib cards"))
   (field [message-snip #f])
   (field [game #f])
-  (field [player-num #f] [opponent-num #f])
+  (field [player-num #f] [opponent-num #f] [dealer-num #f])
   (define/public (show-message message)
    (when message-snip (send pasteboard delete message-snip))
    (when message
@@ -44,8 +44,10 @@
   (define/public (phase-choose-crib)
    (show-message "please choose two crib cards")
    (define (move-to-crib card)
+    (define reg
+     (if (= dealer-num player-num) region-mycrib region-opcrib))
     (send table card-face-down card)
-    (move-card-aligned card region-mycrib number-of-cribs (length (get-field crib game))))
+    (move-card-aligned card reg number-of-cribs (length (get-field crib game))))
    (define curth (current-thread))
    (send (net-obj) add-handler 'select-crib
     (lambda (hash)
@@ -67,8 +69,12 @@
       (thread-receive)
       (loop)
       ))
-   (show-message "crib select done")
    (send table card-face-up (get-field starter game)))
+
+  (define/public (phase-play-card)
+   (send game realign-card opponent-num table region-opponent)
+   (send game realign-card player-num table region-myown)
+   (show-message "now playing"))
 
   (define/public (main)
    ; (start-game) must be called after (random-seed) function since both server and client have to use same seed.
@@ -81,8 +87,10 @@
       (values 1 0)))])
     (set! player-num p-num)
     (set! opponent-num o-num))
-
+   (set! dealer-num 0)
    (send table add-cards-to-region (list (get-field starter game)) region-starter)
-   (send game show-player-card table region-starter region-opponent opponent-num #f)
-   (send game show-player-card table region-starter region-myown player-num #t)
-   (phase-choose-crib))))
+   (send game show-card opponent-num table region-starter region-opponent #f)
+   (send game show-card player-num table region-starter region-myown #t)
+   (phase-choose-crib)
+   (phase-play-card)
+   )))

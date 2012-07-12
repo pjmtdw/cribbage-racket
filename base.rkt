@@ -13,6 +13,8 @@
 (define cribs-per-player 2)
 (define number-of-players 2)
 (define number-of-cribs (* number-of-players cribs-per-player))
+(define hands-per-player (- cards-per-player cribs-per-player))
+(define total-hands (* number-of-players hands-per-player))
 
 ; (A A B B B C) -> ((A A) (B B B) (C))
 (define (group ls)
@@ -34,7 +36,6 @@
   (super-new)
   (init-field [score 0])
   (init-field [cards '()])
-  (init-field [is-dealer #f])
   (define/public (have-card? card)
    (memf (lambda (x) (equal? card (car x))) cards))
   (define/public (append-cards! cds state)
@@ -45,16 +46,20 @@
   (define/public (set-cards-state! cds state)
    (remove-cards! cds)
    (append-cards! cds state))
+  (define/public (realign-card table region)
+   (send table move-cards-to-region (map car cards) region))
   (define/public (show-card table region-from region-to do-face-up)
-   (for ([c (map car cards)])
+   (define cds (map car cards))
+   (for ([c cds])
     (send c user-can-move #f)
     )
-   (send table add-cards-to-region (map car cards) region-from)
-   (send table move-cards-to-region (map car cards) region-to)
-   (when do-face-up (send table cards-face-up (map car cards))))))
+   (send table add-cards-to-region cds region-from)
+   (send table move-cards-to-region cds region-to)
+   (when do-face-up (send table cards-face-up cds)))))
 
 (define cards-hash #f)
 
+; Since card<%> is not serializable, we store the hash code of all the cards
 (define (card->hash card) (list (send card get-suit) (send card get-value)))
 (define (hash->card hash) (hash-ref cards-hash hash))
 (define (make-cards-hash cards)
@@ -66,12 +71,19 @@
  (with-split-list cards ([starters 1]
                          [cards1 cards-per-player]
                          [cards2 cards-per-player])
-  (let ([pls (map (match-lambda ([list c d] (make-object player% 0 (map (cut cons <> 'have) c) d)))
-              (list (list cards1 #t) (list cards2 #f)))])
+  (let ([pls (map (lambda (c) (make-object player% 0 (map (cut cons <> 'have) c)))
+              (list cards1 cards2))])
    (new crib-game%
     [starter (car starters)]
     [players pls]
     [phase 'select-crib]))))
+
+(define-syntax define/delegate-playernum
+ (syntax-rules ()
+  ((_ (func player-num rest ...))
+   (define/public (func player-num rest ...)
+    (send (list-ref (get-field players this) player-num) func rest ...)))))
+
 (define crib-game%
  (class object%
   (super-new)
@@ -92,8 +104,8 @@
    (define pl (list-ref players player-num))
    (send pl set-cards-state! (list card) 'del)
    (append-pile! card))
-  (define/public (show-player-card table region-from region-to player-num do-face-up)
-   (send (list-ref players player-num) show-card table region-from region-to do-face-up))))
+  (define/delegate-playernum (show-card player-num table region-from region-to do-face-up))
+  (define/delegate-playernum (realign-card player-num table region))))
 
 ; 1 2 3 -> 1
 ; 1 2 2 3 -> 2
@@ -122,4 +134,3 @@
   (for/fold ([lst init-lst]) ([i nums])
    (define add-from (append (make-list (- i 1) 0) '(1) (take lst (- comb-sum i))))
    (map + add-from lst))))
-
