@@ -20,7 +20,7 @@
 [("-p" "--port") port "listen or connect port" (net-port (string->number port))]
 [("--host") host "server hostname" (net-host host)])
 
-(net-obj 
+(net-obj
  (case (net-mode)
   ('server (new net-server% [port (net-port)]))
   ('client (new net-client% [host (net-host)] [port (net-port)] ))
@@ -44,7 +44,7 @@
    (send (net-obj) add-handler 'set-seed
     (lambda (s)
      (random-seed s)
-     (thread-send t 'seed-set-done) 
+     (thread-send t 'seed-set-done)
      )))
   (thread-receive)
   (thread (lambda ()(send gui main))))

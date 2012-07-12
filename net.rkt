@@ -47,7 +47,7 @@
       (begin
        (set-field! sock-in this in)
        (set-field! sock-out this out))
-      (begin 
+      (begin
        (sleep 1)
        (loop)))))
    (thread (lambda () (send this recv-thread))))))
@@ -56,7 +56,7 @@
  (class net-base%
   (super-new)
   (init-field port)
-  (define/public (start) 
+  (define/public (start)
    (define listener (tcp-listen port))
    (let-values ([(in out) (tcp-accept listener)])
     (set-field! sock-in this in)

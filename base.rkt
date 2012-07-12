@@ -22,7 +22,7 @@
    ([equal? (car ys) (car xs)] (loop (cdr xs) (cons (car xs) ys) res))
    (else (loop (cdr xs) (list (car xs)) (cons ys res))))))
 
-; (with-split-list '(a b c d e f) ((x 2) (y 3)) (list y x)) -> ((c d e) (a b)) 
+; (with-split-list '(a b c d e f) ((x 2) (y 3)) (list y x)) -> ((c d e) (a b))
 (define-syntax with-split-list
  (syntax-rules ()
   ((_ ls () body ... ) (begin body ...) )
@@ -45,12 +45,13 @@
   (define/public (set-cards-state! cds state)
    (remove-cards! cds)
    (append-cards! cds state))
-  (define/public (show-card table region)
+  (define/public (show-card table region-from region-to do-face-up)
    (for ([c (map car cards)])
-    (send c face-up)
     (send c user-can-move #f)
     )
-   (send table add-cards-to-region (map car cards) region))))
+   (send table add-cards-to-region (map car cards) region-from)
+   (send table move-cards-to-region (map car cards) region-to)
+   (when do-face-up (send table cards-face-up (map car cards))))))
 
 (define cards-hash #f)
 
@@ -67,7 +68,7 @@
                          [cards2 cards-per-player])
   (let ([pls (map (match-lambda ([list c d] (make-object player% 0 (map (cut cons <> 'have) c) d)))
               (list (list cards1 #t) (list cards2 #f)))])
-   (new crib-game% 
+   (new crib-game%
     [starter (car starters)]
     [players pls]
     [phase 'select-crib]))))
@@ -89,10 +90,10 @@
    (set! crib (append crib cards)))
   (define/public (play-card player-num card)
    (define pl (list-ref players player-num))
-   (send pl set-cards-state! (list card) 'del) 
+   (send pl set-cards-state! (list card) 'del)
    (append-pile! card))
-  (define/public (show-player-card table region player-num)
-   (send (list-ref players player-num) show-card table region))))
+  (define/public (show-player-card table region-from region-to player-num do-face-up)
+   (send (list-ref players player-num) show-card table region-from region-to do-face-up))))
 
 ; 1 2 3 -> 1
 ; 1 2 2 3 -> 2
@@ -121,4 +122,4 @@
   (for/fold ([lst init-lst]) ([i nums])
    (define add-from (append (make-list (- i 1) 0) '(1) (take lst (- comb-sum i))))
    (map + add-from lst))))
- 
+

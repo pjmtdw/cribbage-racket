@@ -67,9 +67,10 @@
       (thread-receive)
       (loop)
       ))
-   (show-message "crib select done"))
+   (show-message "crib select done")
+   (send table card-face-up (get-field starter game)))
 
-  (define/public (main) 
+  (define/public (main)
    ; (start-game) must be called after (random-seed) function since both server and client have to use same seed.
    (set-field! game this (start-game))
    (let-values ([(p-num o-num)
@@ -81,6 +82,7 @@
     (set! player-num p-num)
     (set! opponent-num o-num))
 
-   (send game show-player-card table region-myown player-num)
-   (send game show-player-card table region-opponent opponent-num)
+   (send table add-cards-to-region (list (get-field starter game)) region-starter)
+   (send game show-player-card table region-starter region-opponent opponent-num #f)
+   (send game show-player-card table region-starter region-myown player-num #t)
    (phase-choose-crib))))
