@@ -33,6 +33,10 @@
    (when message
     (set! message-snip (make-object string-snip% message))
     (send pasteboard insert message-snip 40 400 )))
+  (define (move-card-aligned card region maxnum index)
+   (define x (+ (region-x region) (* index (/ (region-w region) maxnum))))
+   (define y (region-y region))
+   (send table move-card card  x y))
   (define/public (main) 
    ; (start-game) must be called after (random-seed) function since both server and client have to use same seed.
    (set-field! game this (start-game))
@@ -45,4 +49,13 @@
    (send game show-player-card table region-myown player-num)
    (send game show-player-card table region-opponent opponent-num)
    (show-message "please choose two crib cards")
-   (send table set-single-click-action (lambda (card) (send net-obj send-value (list 'seed (number->string (current-seconds)))))))))
+   (send (net-obj) add-handler 'select-crib
+    (lambda (hash)
+     (let ([card (hash->card hash)])
+      (move-card-aligned card region-mycrib 4 (length (get-field crib game))) 
+      (send game select-crib opponent-num (list card)))))
+   (send table set-single-click-action
+    (lambda (card)
+     (move-card-aligned card region-mycrib 4 (length (get-field crib game))) 
+     (send game select-crib player-num (list card))
+     (send (net-obj) send-value (list 'select-crib (card->hash card))))))))

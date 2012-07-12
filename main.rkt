@@ -40,8 +40,13 @@
    (random-seed s)
    (send gui main)))
  ('client
-  (send (net-obj) add-handler 'set-seed
-   (lambda (s)
-    (random-seed s)
-    (send gui main)))))
+  (let ([t (current-thread)])
+   (send (net-obj) add-handler 'set-seed
+    (lambda (s)
+     (random-seed s)
+     (thread-send t 'seed-set-done) 
+     )))
+  (thread-receive)
+  (send gui main)
+  ))
 

@@ -1,7 +1,8 @@
 #lang racket
 (require srfi/1 srfi/26 games/cards racket/class)
 
-(provide start-game move-card-aligned net-port net-host net-mode net-obj)
+(provide start-game net-port net-host net-mode net-obj
+ card->hash hash->card)
 (define net-port (make-parameter 12345))
 (define net-host (make-parameter "localhost"))
 (define net-mode (make-parameter #f))
@@ -46,8 +47,17 @@
 (define cards-per-player 6)
 (define cribs-per-player 2)
 
+(define cards-hash #f)
+
+(define (card->hash card) (list (send card get-suit) (send card get-value)))
+(define (hash->card hash) (hash-ref cards-hash hash))
+(define (make-cards-hash cards)
+ (set! cards-hash (make-hash (for/list ([c cards]) (cons (card->hash c) c)))))
+
+
 (define (start-game)
  (define cards (shuffle-list (make-deck) 7)); according to doc of games/cards, 7 is sufficient for shuffling list
+ (make-cards-hash cards)
  (with-split-list cards ([starters 1]
                          [cards1 cards-per-player]
                          [cards2 cards-per-player])
