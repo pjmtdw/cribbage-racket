@@ -183,21 +183,25 @@
 
   (define/public (main)
    ; (start-game) must be called after (random-seed) function since both server and client have to use same seed.
-   (set-field! game this (start-game))
    (set-values-by-net-mode! (player-num opponent-num) (0 1))
    (set-values-by-net-mode! (player-color opponent-color) ("orange" "purple"))
-   (set! dealer-num 0)
-   (set! child-num 1)
-   (send table add-cards-to-region (list (get-field starter game)) region-starter)
-   (send game show-card opponent-num table region-starter region-opponent #f)
-   (send game show-card player-num table region-starter region-myown #t)
-   (show-opponent-score 0)
-   (show-player-score 0)
-   (phase-choose-crib)
-   (phase-the-play)
-   (phase-the-show)
-   (displayln "TODO: Go For Next Game")
-   )))
+   (let loop ()
+    (if game
+     (set-field! game this (apply start-game (map (cut send game get-score <>) '(0 1))))
+     (set-field! game this (start-game)))
+    (cond 
+     ([and dealer-num child-num] (let ([d dealer-num] [c child-num]) (set! dealer-num c) (set! child-num d)))
+     (else (set! dealer-num 0) (set! child-num 1)))
+    (send table add-cards-to-region (list (get-field starter game)) region-starter)
+    (send game show-card opponent-num table region-starter region-opponent #f)
+    (send game show-card player-num table region-starter region-myown #t)
+    (show-scores)
+    (phase-choose-crib)
+    (phase-the-play)
+    (phase-the-show)
+    (send game clear-game table)
+    (loop)
+   ))))
 
 (define-syntax set-values-by-net-mode!
  (syntax-rules ()

@@ -1,0 +1,7 @@
+* Computer Player
+* Ignore connection to port from other software
+* Highlight the playable card
+* Highlight the target region in the show phase
+* GUI Interface for choosing host/port option
+* Judge Winner for 61 point or 121 point
+* Show Cribbage Board

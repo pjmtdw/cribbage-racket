@@ -82,14 +82,14 @@
 (define (make-cards-hash cards)
  (set! cards-hash (make-hash (for/list ([c cards]) (cons (card->hash c) c)))))
 
-(define (start-game)
+(define (start-game [score1 0] [score2 0])
  (define cards (shuffle-list (make-deck) 7)); according to doc of games/cards, 7 is sufficient for shuffling list
  (make-cards-hash cards)
  (with-split-list cards ([starters 1]
                          [cards1 cards-per-player]
                          [cards2 cards-per-player])
-  (let ([pls (map (lambda (c) (make-object player% 0 (map (cut cons <> 'have) c)))
-              (list cards1 cards2))])
+  (let ([pls (map (match-lambda ((list c s) (make-object player% s (map (cut cons <> 'have) c))))
+              (list (list cards1 score1) (list cards2 score2)))])
    (new crib-game%
     [starter (car starters)]
     [players pls]
@@ -115,6 +115,17 @@
   (init-field [starter #f])
   (init-field [players #f])
   (init-field [pile '()])
+  (define/public (clear-game table)
+   (send table remove-cards pile)
+   (set! pile '())
+   (send table remove-card starter)
+   (set! starter #f)
+   (send table remove-cards crib)
+   (set! crib '())
+   (for ([p players])
+    (send table remove-cards (map car (get-field cards p)))
+    (set-field! cards p '())))
+
   (define/public (hand-score player-num)
    (define cards 
     (if player-num
