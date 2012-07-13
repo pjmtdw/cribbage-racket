@@ -54,6 +54,8 @@
    (append-cards! cds state))
   (define/public (cards-have)
    (map car (filter (lambda (x) (eq? (cdr x) 'have)) cards)))
+  (define/public (all-face-up table)
+   (send table cards-face-up (map car cards)))
   (define/public (playable? pile)
    (define ch (cards-have))
    (if (null? ch) #f
@@ -61,7 +63,7 @@
      (let ([sum (crib-cards-sum pile)]
            [smallest (apply min (map crib-card-value ch))])
       (<= smallest (- allowed-card-sum sum))))))
-  (define/public (realign-card table region)
+  (define/public (move-player-card-to-region table region)
    (send table move-cards-to-region (map car cards) region))
   (define/public (show-card table region-from region-to do-face-up)
    (define cds (map car cards))
@@ -171,9 +173,10 @@
     (else #f)))
 
   (define/delegate-playernum (show-card player-num table region-from region-to do-face-up))
-  (define/delegate-playernum (realign-card player-num table region))
+  (define/delegate-playernum (move-player-card-to-region player-num table region))
   (define/delegate-playernum (add-score player-num dx))
   (define/delegate-playernum (get-score player-num))
+  (define/delegate-playernum (all-face-up player-num table))
   ))
 
 (define (run-score ps)

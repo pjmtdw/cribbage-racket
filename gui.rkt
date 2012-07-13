@@ -79,9 +79,13 @@
       ))
    (send table card-face-up (get-field starter game)))
 
+  (define (show-scores)
+   (show-opponent-score (send game get-score opponent-num))
+   (show-player-score (send game get-score player-num)))
+
   (define/public (phase-play-card)
-   (send game realign-card opponent-num table region-opponent)
-   (send game realign-card player-num table region-myown)
+   (send game move-player-card-to-region opponent-num table region-opponent)
+   (send game move-player-card-to-region player-num table region-myown)
    (show-message "now playing")
    (define nums-in-ground 0)
    (define current-player child-num) 
@@ -90,9 +94,6 @@
      (if (= current-player player-num)
       (show-message "your turn")
       (show-message "opponents turn"))))
-   (define (show-scores)
-    (show-opponent-score (send game get-score opponent-num))
-    (show-player-score (send game get-score player-num)))
 
    ;Two for his heels
    (when (= 11 (send (get-field starter game) get-value))
@@ -131,9 +132,23 @@
       )))
 
   (define/public (phase-the-show)
-   (displayln (send game hand-score child-num))
-   (displayln (send game hand-score dealer-num))
-   (displayln (send game hand-score #f)))
+   (define curth (current-thread))
+   (send game move-player-card-to-region opponent-num table region-opponent)
+   (send game move-player-card-to-region player-num table region-myown)
+   (send game all-face-up opponent-num table)
+   (send game all-face-up player-num table)
+   (send table cards-face-up (get-field crib game))
+   (send table add-region (make-button-region 500 400 50 25 "next" (lambda _ (thread-send curth 'next))))
+   (define (doit num name)
+    (let* ([score (send game hand-score num)]
+           [sum (for/sum ([c score]) (cdr c))])
+     (send game add-score (if num num dealer-num) sum)
+     (show-message (format (string-append name ":~a") score))
+     (show-scores)
+     (thread-receive)))
+   (doit child-num "child")
+   (doit dealer-num "dealer")
+   (doit #f "crib"))
 
   (define/public (main)
    ; (start-game) must be called after (random-seed) function since both server and client have to use same seed.
