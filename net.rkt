@@ -30,8 +30,7 @@
            [func (hash-ref handlers (car v))]
            )
      (apply func (cdr v))
-     (loop))))
-  ))
+     (loop))))))
 
 (define net-client%
  (class net-base%

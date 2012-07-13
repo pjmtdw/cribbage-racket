@@ -7,7 +7,6 @@
   ((_ r (body ...))
    (field [r (let ([x (make-region body ... #f)]) (send (get-field table this) add-region x) x)]))))
 
-
 (define-values (c-width c-height)
  (let ([c (car (make-deck))])
   (values
@@ -27,7 +26,6 @@
     (let ([new-style (send style-list find-or-create-style (send snip get-style) delta)])
      (send snip set-style new-style)))
   snip))
-
 
 (define crib-gui
  (class object%
@@ -50,6 +48,7 @@
   (define/show-text-snip (show-message message) message-snip 40 400)
   (define/show-text-snip (show-opponent-score score) opponent-score-snip 500 (+ 25 (region-y region-opponent)) pasteboard player-color 7)
   (define/show-text-snip (show-player-score score) player-score-snip 500 (+ 25 (region-y region-myown)) pasteboard opponent-color 7)
+
   (define/public (move-card-aligned card region maxnum index)
    (define x (+ (region-x region) (* index (/ (- (region-w region) c-width) (- maxnum 1)))))
    (define y (region-y region))
@@ -93,19 +92,17 @@
    (send game move-player-card-to-region player-num table region-myown)
    (show-message "now playing")
    (define nums-in-ground 0)
-   (define current-player child-num) 
+   (define current-player child-num)
    (define (show-whose-turn)
     (when (and current-player player-num)
      (if (= current-player player-num)
       (show-message "your turn")
       (show-message "opponent's turn"))))
-
    ;Two for his heels
    (when (= 11 (send (get-field starter game) get-value))
     (send game add-score dealer-num 2)
     (print-score dealer-num "Two for his heels: +2")
     (show-scores))
-
    (show-whose-turn)
    (define (move-to-ground card)
     (send table card-face-up card)
@@ -117,9 +114,7 @@
       (send game play-card player-num card)
       )
     ((move-to-ground card)
-     (send game play-card opponent-num card)
-    )
-    )
+     (send game play-card opponent-num card)))
    (let loop ()
     (unless (>= nums-in-ground total-hands)
       (thread-receive)
@@ -129,7 +124,7 @@
        (when (> sum 0) (print-score current-player "Score: +~a" (filter (lambda (x) (> (cdr x) 0)) score))))
       (let ([nextp (send game next-player current-player)])
        (if nextp (set! current-player nextp)
-        (begin 
+        (begin
          (send table cards-face-down (get-field pile game))
          ;Last Card Score
          (send game add-score current-player 1)
@@ -141,6 +136,7 @@
       (loop)
       ))
    (send table set-single-click-action identity))
+
   (define/public (phase-the-show)
    (define curth (current-thread))
    (send game move-player-card-to-region opponent-num table region-opponent)
@@ -155,9 +151,8 @@
     (unless (check-cond)
      (let loop ()
        (set! received (cons (thread-receive) received))
-       (unless (check-cond) 
+       (unless (check-cond)
         (loop)))))
-
    (send (net-obj) add-handler 'next-game
     (lambda _
      (thread-send curth 'next-game)))
@@ -178,8 +173,7 @@
    (doit 'next 3 #f "crib")
    (send table remove-region button-region)
    (send (net-obj) send-value '(next-game))
-   (do-receive 'next-game 1)
-   )
+   (do-receive 'next-game 1))
 
   (define/public (main)
    ; (start-game) must be called after (random-seed) function since both server and client have to use same seed.
@@ -189,7 +183,7 @@
     (if game
      (set-field! game this (apply start-game (map (cut send game get-score <>) '(0 1))))
      (set-field! game this (start-game)))
-    (cond 
+    (cond
      ([and dealer-num child-num] (let ([d dealer-num] [c child-num]) (set! dealer-num c) (set! child-num d)))
      (else (set! dealer-num 0) (set! child-num 1)))
     (send table add-cards-to-region (list (get-field starter game)) region-starter)
@@ -200,8 +194,7 @@
     (phase-the-play)
     (phase-the-show)
     (send game clear-game table)
-    (loop)
-   ))))
+    (loop)))))
 
 (define-syntax set-values-by-net-mode!
  (syntax-rules ()

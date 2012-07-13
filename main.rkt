@@ -47,6 +47,5 @@
      (thread-send t 'seed-set-done)
      )))
   (thread-receive)
-  (thread (lambda ()(send gui main))))
-  )
+  (thread (lambda ()(send gui main)))))
 

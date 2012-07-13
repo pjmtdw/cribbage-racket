@@ -127,7 +127,7 @@
     (set-field! cards p '())))
 
   (define/public (hand-score player-num)
-   (define cards 
+   (define cards
     (if player-num
      (with-player-num ((pl player-num))
       (map car (get-field cards pl)))
@@ -190,8 +190,7 @@
   (define/delegate-playernum (move-player-card-to-region player-num table region))
   (define/delegate-playernum (add-score player-num dx))
   (define/delegate-playernum (get-score player-num))
-  (define/delegate-playernum (all-face-up player-num table))
-  ))
+  (define/delegate-playernum (all-face-up player-num table))))
 
 (define (run-score ps)
  (define nums (sort (map (cut send <> get-value) ps) <))
@@ -221,7 +220,7 @@
 ; 10 5 5 5 -> 3
 ; 6 6 9 9 -> 4
 (define (hand-score-sum-p hands comb-sum)
- (define nums (map (cut send <> get-value) hands))
+ (define nums (map crib-card-value hands))
  (define init-lst (make-list comb-sum 0))
  (last
   (for/fold ([lst init-lst]) ([i nums])
@@ -254,7 +253,7 @@
 
 (define (hand-score-his-nob starter cards)
  (define starter-suit (send starter get-suit))
- (if (memf (lambda (c) (eq? (send c get-suit) starter-suit)) cards)
+ (if (memf (lambda (c) (and (eq? (send c get-suit) starter-suit) (= (send c get-value) 11) )) cards)
   1 0))
 
 (define (crib-card-value card)
