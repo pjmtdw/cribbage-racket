@@ -14,6 +14,21 @@
    (send c card-width)
    (send c card-height))))
 
+(define (make-text-snip text [editor #f] [color #f] [size-add #f])
+ (let*
+  ([snip (make-object string-snip% text)]
+   [delta (new style-delta%)]
+   [style-list (if editor (send editor get-style-list) #f)])
+  (when color
+   (send delta set-delta-foreground color))
+  (when size-add
+   (send delta set-size-add size-add))
+  (when (and editor (or color size-add))
+    (let ([new-style (send style-list find-or-create-style (send snip get-style) delta)])
+     (send snip set-style new-style)))
+  snip))
+
+
 (define crib-gui
  (class object%
   (super-new)
@@ -28,14 +43,13 @@
   (region-field region-starter (40 (region-y region-ground) c-width c-height "starter"))
   (region-field region-mycrib (30 (* 3.1 c-height) crib-width c-height "my crib cards"))
   (region-field region-opcrib (30 (* 0.4 c-height) crib-width c-height "opponent crib cards"))
-  (field [message-snip #f])
   (field [game #f])
   (field [player-num #f] [opponent-num #f] [dealer-num #f] [child-num #f])
-  (define/public (show-message message)
-   (when message-snip (send pasteboard delete message-snip))
-   (when message
-    (set! message-snip (make-object string-snip% message))
-    (send pasteboard insert message-snip 40 400 )))
+  (field [player-color #f] [opponent-color #f])
+
+  (define/show-text-snip (show-message message) message-snip 40 400)
+  (define/show-text-snip (show-opponent-score score) opponent-score-snip 500 (+ 25 (region-y region-myown)) pasteboard player-color 7)
+  (define/show-text-snip (show-player-score score) player-score-snip 500 (+ 25 (region-y region-opponent)) pasteboard opponent-color 7)
   (define/public (move-card-aligned card region maxnum index)
    (define x (+ (region-x region) (* index (/ (- (region-w region) c-width) (- maxnum 1)))))
    (define y (region-y region))
@@ -45,6 +59,8 @@
    (= player-num (send game card-owner card)))
   (define/public (phase-choose-crib)
    (show-message "please choose two crib cards")
+   (show-opponent-score 111)
+   (show-player-score 123)
    (define (move-to-crib card)
     (define reg
      (if (= dealer-num player-num) region-mycrib region-opcrib))
@@ -99,22 +115,28 @@
   (define/public (main)
    ; (start-game) must be called after (random-seed) function since both server and client have to use same seed.
    (set-field! game this (start-game))
-   (let-values ([(p-num o-num)
-    (case (net-mode)
-     ('server
-      (values 0 1))
-     ('client
-      (values 1 0)))])
-    (set! player-num p-num)
-    (set! opponent-num o-num))
+   (set-values-by-net-mode! (player-num opponent-num) (0 1))
+   (set-values-by-net-mode! (player-color opponent-color) ("orange" "purple"))
    (set! dealer-num 0)
-   (set! child-num 0)
+   (set! child-num 1)
    (send table add-cards-to-region (list (get-field starter game)) region-starter)
    (send game show-card opponent-num table region-starter region-opponent #f)
    (send game show-card player-num table region-starter region-myown #t)
    (phase-choose-crib)
    (phase-play-card)
    )))
+
+(define-syntax set-values-by-net-mode!
+ (syntax-rules ()
+  ((_ (p-k o-k) (p-v o-v))
+   (let-values ([(p o)
+    (case (net-mode)
+     ('server
+      (values p-v o-v))
+     ('client
+      (values o-v p-v)))])
+    (set! p-k p)
+    (set! o-k o)))))
 
 (define-syntax click-action-and-handler
  (syntax-rules ()
@@ -132,3 +154,16 @@
        (let ([card (hash->card hash)])
         handler ...
         (thread-send curth sym)))))))))
+
+(define-syntax define/show-text-snip
+ (syntax-rules ()
+  ((_ (func arg) snip x y rest ...)
+   (begin
+    (field [snip #f])
+    (define/public (func arg)
+     (let ([pasteboard (get-field pasteboard this)]
+           [text (if (number? arg) (number->string arg) arg)])
+      (when snip (send pasteboard delete snip))
+      (when text
+       (set! snip (make-text-snip text rest ...))
+       (send pasteboard insert snip x y))))))))
