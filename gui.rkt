@@ -83,6 +83,11 @@
    (show-opponent-score (send game get-score opponent-num))
    (show-player-score (send game get-score player-num)))
 
+  (define (print-score num str . arg)
+   (define pl (if (= num player-num) "[You]" "[Opponent]"))
+   (apply printf (cons (string-append pl " " str "\n") arg))
+   (flush-output))
+
   (define/public (phase-play-card)
    (send game move-player-card-to-region opponent-num table region-opponent)
    (send game move-player-card-to-region player-num table region-myown)
@@ -98,6 +103,7 @@
    ;Two for his heels
    (when (= 11 (send (get-field starter game) get-value))
     (send game add-score dealer-num 2)
+    (print-score dealer-num "Two for his heels: +2")
     (show-scores))
 
    (show-whose-turn)
@@ -117,13 +123,17 @@
    (let loop ()
     (unless (>= nums-in-ground total-hands)
       (thread-receive)
-      (send game add-score current-player (send game pile-score))
+      (let* ([score (send game pile-score)]
+             [sum (for/sum ([i score]) (cdr i))])
+       (send game add-score current-player sum)
+       (when (> sum 0) (print-score current-player "Score: +~a" (filter (lambda (x) (> (cdr x) 0)) score))))
       (let ([nextp (send game next-player current-player)])
        (if nextp (set! current-player nextp)
         (begin 
          (send table cards-face-down (get-field pile game))
          ;Last Card Score
          (send game add-score current-player 1)
+         (print-score current-player "Last Card: +1")
          (send game clear-pile)
          (set! current-player (send game next-player current-player)))))
       (show-scores)
@@ -141,9 +151,12 @@
    (send table add-region (make-button-region 500 400 50 25 "next" (lambda _ (thread-send curth 'next))))
    (define (doit num name)
     (let* ([score (send game hand-score num)]
-           [sum (for/sum ([c score]) (cdr c))])
-     (send game add-score (if num num dealer-num) sum)
-     (show-message (format (string-append name ":~a") score))
+           [filterd (filter (lambda (x) (> (cdr x) 0)) score)]
+           [sum (for/sum ([c score]) (cdr c))]
+           [pnum (if num num dealer-num)])
+     (send game add-score pnum sum)
+     (print-score pnum "The Show: +~a" filterd)
+     (show-message (format (string-append name ":~a") filterd))
      (show-scores)
      (thread-receive)))
    (doit child-num "child")
