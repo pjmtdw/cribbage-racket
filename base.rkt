@@ -91,7 +91,7 @@
    (new crib-game%
     [starter (car starters)]
     [players pls]
-    [phase 'select-crib]))))
+    ))))
 
 (define-syntax with-player-num
  (syntax-rules ()
@@ -113,7 +113,18 @@
   (init-field [starter #f])
   (init-field [players #f])
   (init-field [pile '()])
-  (init-field [phase #f])
+  (define/public (hand-score player-num)
+   (define cards 
+    (if player-num
+     (with-player-num ((pl player-num))
+      (map car (get-field cards pl)))
+     crib))
+   (define cards-with-starter (cons starter cards))
+   `((fifteen . ,(hand-score-fifteen cards-with-starter))
+     (pair . ,(hand-score-pair cards-with-starter))
+     (run . ,(hand-score-run cards-with-starter))
+     (flush . ,(hand-score-flush starter cards))
+     (his-nob . ,(hand-score-his-nob starter cards))))
   (define/public (pile-score)
    (+ (pile-sum-score) (pile-run-score) (pile-pair-score)))
   (define/public (pile-sum-score)
@@ -147,7 +158,7 @@
     (set! crib (append crib cards))))
   (define/public (play-card player-num card)
    (with-player-num ((pl player-num))
-    (send pl set-cards-state! (list card) 'del)
+    (send pl set-cards-state! (list card) 'had)
     (append-pile! card)))
   (define/public (playable? player-num)
    (with-player-num ((pl player-num))
@@ -171,12 +182,12 @@
   (length ps)
   #f))
 
-
-; 1 2 3 -> 1
-; 1 2 2 3 -> 2
-; 1 2 3 3 3 -> 3
-; 1 1 2 2 3 -> 4
-(define (hand-score-run hands min-run-len)
+; 1 2 3 -> 3
+; 1 2 2 3 -> 3*2
+; 1 2 3 3 3 -> 3*3
+; 1 1 2 2 3 -> 3*4
+; 1 2 3 4 4 -> 4*2
+(define (hand-score-run-p hands min-run-len)
  (define nums (group (sort (map (cut send <> get-value) hands) <)))
  (let loop ([prev #f] [xs nums] [len 0] [pat 0] [res 0])
   (define next-loop (cut loop (caar xs) (cdr xs) <> <> <> ))
@@ -192,13 +203,42 @@
 ; 7 8 7 -> 2
 ; 10 5 5 5 -> 3
 ; 6 6 9 9 -> 4
-(define (hand-score-comb hands comb-sum)
+(define (hand-score-sum-p hands comb-sum)
  (define nums (map (cut send <> get-value) hands))
  (define init-lst (make-list comb-sum 0))
  (last
   (for/fold ([lst init-lst]) ([i nums])
    (define add-from (append (make-list (- i 1) 0) '(1) (take lst (- comb-sum i))))
    (map + add-from lst))))
+
+(define (hand-score-fifteen cards)
+ (* 2 (hand-score-sum-p cards middle-bonus)))
+
+(define (hand-score-run cards)
+ (hand-score-run-p cards min-run-length))
+
+(define (hand-score-pair cards)
+ (define nums (group (sort (map (cut send <> get-value) cards) <)))
+ (for/sum ([xs nums])
+  (case (length xs)
+   ('2 2)
+   ('3 6)
+   ('4 12)
+   (else 0))))
+
+(define (hand-score-flush starter cards)
+ (define suits (map (cut send <> get-suit) cards))
+ (define starter-suit (send starter get-suit))
+ (define is-flush (= (length (car (group suits))) (length suits)))
+ (cond
+  ((and is-flush (eq? starter-suit (car suits))) 5)
+  (is-flush 4)
+  (else 0)))
+
+(define (hand-score-his-nob starter cards)
+ (define starter-suit (send starter get-suit))
+ (if (memf (lambda (c) (eq? (send c get-suit) starter-suit)) cards)
+  1 0))
 
 (define (crib-card-value card)
  (let ([v (send card get-value)])

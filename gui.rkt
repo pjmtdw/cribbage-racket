@@ -90,6 +90,15 @@
      (if (= current-player player-num)
       (show-message "your turn")
       (show-message "opponents turn"))))
+   (define (show-scores)
+    (show-opponent-score (send game get-score opponent-num))
+    (show-player-score (send game get-score player-num)))
+
+   ;Two for his heels
+   (when (= 11 (send (get-field starter game) get-value))
+    (send game add-score dealer-num 2)
+    (show-scores))
+
    (show-whose-turn)
    (define (move-to-ground card)
     (send table card-face-up card)
@@ -116,11 +125,15 @@
          (send game add-score current-player 1)
          (send game clear-pile)
          (set! current-player (send game next-player current-player)))))
-      (show-opponent-score (send game get-score opponent-num))
-      (show-player-score (send game get-score player-num))
+      (show-scores)
       (show-whose-turn)
       (loop)
       )))
+
+  (define/public (phase-the-show)
+   (displayln (send game hand-score child-num))
+   (displayln (send game hand-score dealer-num))
+   (displayln (send game hand-score #f)))
 
   (define/public (main)
    ; (start-game) must be called after (random-seed) function since both server and client have to use same seed.
@@ -136,6 +149,7 @@
    (show-player-score 0)
    (phase-choose-crib)
    (phase-play-card)
+   (phase-the-show)
    )))
 
 (define-syntax set-values-by-net-mode!
