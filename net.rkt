@@ -4,8 +4,6 @@
 
 (provide net-client% net-server% net-sync-value)
 
-(serializable-struct sirotan (kawaisa samisisa))
-
 (define (net-obj->symbol obj)
  (if (is-a? obj net-server%) 'server 'client))
 
@@ -20,7 +18,7 @@
    (flush-output sock-out))
   (define/public (recv-value)
    (deserialize (read sock-in)))
-  (define/public (add-handler key func)
+  (define/public (set-handler key func)
    (hash-set! handlers key func))
   (define/public (remove-handler key)
    (hash-remove handlers key))

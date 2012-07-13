@@ -153,7 +153,7 @@
        (set! received (cons (thread-receive) received))
        (unless (check-cond)
         (loop)))))
-   (send (net-obj) add-handler 'next-game
+   (send (net-obj) set-handler 'next-game
     (lambda _
      (thread-send curth 'next-game)))
    (define button-region (make-button-region 500 400 50 25 "next" (lambda _ (thread-send curth 'next))))
@@ -219,7 +219,7 @@
         action ...
         (send (net-obj) send-value (list sym (card->hash card)))
         (thread-send curth sym))))
-     (send (net-obj) add-handler sym
+     (send (net-obj) set-handler sym
       (lambda (hash)
        (let ([card (hash->card hash)])
         handler ...
