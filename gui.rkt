@@ -1,5 +1,5 @@
 #lang racket
-(require games/cards racket/gui "base.rkt")
+(require games/cards racket/gui "base.rkt" srfi/26)
 (provide crib-gui)
 
 (define-syntax region-field
@@ -88,7 +88,7 @@
    (apply printf (cons (string-append pl " " str "\n") arg))
    (flush-output))
 
-  (define/public (phase-play-card)
+  (define/public (phase-the-play)
    (send game move-player-card-to-region opponent-num table region-opponent)
    (send game move-player-card-to-region player-num table region-myown)
    (show-message "now playing")
@@ -98,7 +98,7 @@
     (when (and current-player player-num)
      (if (= current-player player-num)
       (show-message "your turn")
-      (show-message "opponents turn"))))
+      (show-message "opponent's turn"))))
 
    ;Two for his heels
    (when (= 11 (send (get-field starter game) get-value))
@@ -139,8 +139,8 @@
       (show-scores)
       (show-whose-turn)
       (loop)
-      )))
-
+      ))
+   (send table set-single-click-action identity))
   (define/public (phase-the-show)
    (define curth (current-thread))
    (send game move-player-card-to-region opponent-num table region-opponent)
@@ -148,8 +148,22 @@
    (send game all-face-up opponent-num table)
    (send game all-face-up player-num table)
    (send table cards-face-up (get-field crib game))
-   (send table add-region (make-button-region 500 400 50 25 "next" (lambda _ (thread-send curth 'next))))
-   (define (doit num name)
+   (define received '())
+   (define (do-receive s c)
+    (define (check-cond)
+     (= c (count (cut eq? s <>) received)))
+    (unless (check-cond)
+     (let loop ()
+       (set! received (cons (thread-receive) received))
+       (unless (check-cond) 
+        (loop)))))
+
+   (send (net-obj) add-handler 'next-game
+    (lambda _
+     (thread-send curth 'next-game)))
+   (define button-region (make-button-region 500 400 50 25 "next" (lambda _ (thread-send curth 'next))))
+   (send table add-region button-region)
+   (define (doit s c num name)
     (let* ([score (send game hand-score num)]
            [filterd (filter (lambda (x) (> (cdr x) 0)) score)]
            [sum (for/sum ([c score]) (cdr c))]
@@ -158,10 +172,14 @@
      (print-score pnum "The Show: +~a" filterd)
      (show-message (format (string-append name ":~a") filterd))
      (show-scores)
-     (thread-receive)))
-   (doit child-num "child")
-   (doit dealer-num "dealer")
-   (doit #f "crib"))
+     (do-receive s c)))
+   (doit 'next 1 child-num "child")
+   (doit 'next 2 dealer-num "dealer")
+   (doit 'next 3 #f "crib")
+   (send table remove-region button-region)
+   (send (net-obj) send-value '(next-game))
+   (do-receive 'next-game 1)
+   )
 
   (define/public (main)
    ; (start-game) must be called after (random-seed) function since both server and client have to use same seed.
@@ -176,8 +194,9 @@
    (show-opponent-score 0)
    (show-player-score 0)
    (phase-choose-crib)
-   (phase-play-card)
+   (phase-the-play)
    (phase-the-show)
+   (displayln "TODO: Go For Next Game")
    )))
 
 (define-syntax set-values-by-net-mode!
