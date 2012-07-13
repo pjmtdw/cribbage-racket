@@ -85,12 +85,18 @@
    (show-message "now playing")
    (define nums-in-ground 0)
    (define current-player child-num) 
+   (define (show-whose-turn)
+    (when (and current-player player-num)
+     (if (= current-player player-num)
+      (show-message "your turn")
+      (show-message "opponents turn"))))
+   (show-whose-turn)
    (define (move-to-ground card)
     (send table card-face-up card)
     (move-card-aligned card region-ground total-hands nums-in-ground)
     (set! nums-in-ground (+ 1 nums-in-ground)))
    (click-action-and-handler 'play-card card
-    ([and (< nums-in-ground total-hands) (own-card? card) (= current-player player-num)]
+    ([and (< nums-in-ground total-hands) (own-card? card) (= current-player player-num) (send game playable-card? card) ]
       (move-to-ground card)
       (send game play-card player-num card)
       )
@@ -112,6 +118,7 @@
          (set! current-player (send game next-player current-player)))))
       (show-opponent-score (send game get-score opponent-num))
       (show-player-score (send game get-score player-num))
+      (show-whose-turn)
       (loop)
       )))
 
