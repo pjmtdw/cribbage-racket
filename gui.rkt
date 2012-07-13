@@ -48,8 +48,8 @@
   (field [player-color #f] [opponent-color #f])
 
   (define/show-text-snip (show-message message) message-snip 40 400)
-  (define/show-text-snip (show-opponent-score score) opponent-score-snip 500 (+ 25 (region-y region-myown)) pasteboard player-color 7)
-  (define/show-text-snip (show-player-score score) player-score-snip 500 (+ 25 (region-y region-opponent)) pasteboard opponent-color 7)
+  (define/show-text-snip (show-opponent-score score) opponent-score-snip 500 (+ 25 (region-y region-opponent)) pasteboard player-color 7)
+  (define/show-text-snip (show-player-score score) player-score-snip 500 (+ 25 (region-y region-myown)) pasteboard opponent-color 7)
   (define/public (move-card-aligned card region maxnum index)
    (define x (+ (region-x region) (* index (/ (- (region-w region) c-width) (- maxnum 1)))))
    (define y (region-y region))
@@ -59,8 +59,6 @@
    (= player-num (send game card-owner card)))
   (define/public (phase-choose-crib)
    (show-message "please choose two crib cards")
-   (show-opponent-score 111)
-   (show-player-score 123)
    (define (move-to-crib card)
     (define reg
      (if (= dealer-num player-num) region-mycrib region-opcrib))
@@ -103,12 +101,17 @@
    (let loop ()
     (unless (>= nums-in-ground total-hands)
       (thread-receive)
+      (send game add-score current-player (send game pile-score))
       (let ([nextp (send game next-player current-player)])
        (if nextp (set! current-player nextp)
         (begin 
          (send table cards-face-down (get-field pile game))
+         ;Last Card Score
+         (send game add-score current-player 1)
          (send game clear-pile)
          (set! current-player (send game next-player current-player)))))
+      (show-opponent-score (send game get-score opponent-num))
+      (show-player-score (send game get-score player-num))
       (loop)
       )))
 
@@ -122,6 +125,8 @@
    (send table add-cards-to-region (list (get-field starter game)) region-starter)
    (send game show-card opponent-num table region-starter region-opponent #f)
    (send game show-card player-num table region-starter region-myown #t)
+   (show-opponent-score 0)
+   (show-player-score 0)
    (phase-choose-crib)
    (phase-play-card)
    )))

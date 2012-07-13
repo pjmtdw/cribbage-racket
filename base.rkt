@@ -16,6 +16,8 @@
 (define hands-per-player (- cards-per-player cribs-per-player))
 (define total-hands (* number-of-players hands-per-player))
 (define allowed-card-sum 31)
+(define middle-bonus 15)
+(define min-run-length 3)
 
 ; (A A B B B C) -> ((A A) (B B B) (C))
 (define (group ls)
@@ -44,6 +46,9 @@
   (define/public (remove-cards! cds)
    (define removed (remove (lambda (x) (member (car x) cds)) cards))
    (set! cards removed))
+  (define/public (add-score dx)
+   (set! score (+ score dx)))
+  (define/public (get-score)score)
   (define/public (set-cards-state! cds state)
    (remove-cards! cds)
    (append-cards! cds state))
@@ -106,6 +111,25 @@
   (init-field [players #f])
   (init-field [pile '()])
   (init-field [phase #f])
+  (define/public (pile-score)
+   (+ (pile-sum-score) (pile-run-score) (pile-pair-score)))
+  (define/public (pile-sum-score)
+   (case (crib-cards-sum pile)
+    ('15 2)
+    ('31 1)
+    (else 0)))
+  (define/public (pile-run-score)
+   (or (for/or ([l (in-range (length pile) (- min-run-length 1) -1)])
+        (let ([p (take-right pile l)])
+         (run-score p))) 0))
+  (define/public (pile-pair-score)
+   (define nums (map (cut send <> get-value) pile))
+   (case (length (car (group (reverse nums))))
+    ('2 2)
+    ('3 6)
+    ('4 12)
+    (else 0)))
+
   (define/public (card-owner card)
    (for/or ([p players] [i (in-naturals)]) (if (send p have-card? card) i #f)))
   (define/public (clear-pile)
@@ -131,14 +155,24 @@
     (else #f)))
 
   (define/delegate-playernum (show-card player-num table region-from region-to do-face-up))
-  (define/delegate-playernum (realign-card player-num table region))))
+  (define/delegate-playernum (realign-card player-num table region))
+  (define/delegate-playernum (add-score player-num dx))
+  (define/delegate-playernum (get-score player-num))
+  ))
+
+(define (run-score ps)
+ (define nums (sort (map (cut send <> get-value) ps) <))
+ (if (for/and ([i nums] [j (drop nums 1)]) (= 1 (- j i)))
+  (length ps)
+  #f))
+
 
 ; 1 2 3 -> 1
 ; 1 2 2 3 -> 2
 ; 1 2 3 3 3 -> 3
 ; 1 1 2 2 3 -> 4
-(define (piles-score-run piles min-run-len)
- (define nums (group (sort (map (cut send <> get-value) piles))))
+(define (hand-score-run hands min-run-len)
+ (define nums (group (sort (map (cut send <> get-value) hands) <)))
  (let loop ([prev #f] [xs nums] [len 0] [pat 0] [res 0])
   (define next-loop (cut loop (caar xs) (cdr xs) <> <> <> ))
   (define (calc)
@@ -153,8 +187,8 @@
 ; 7 8 7 -> 2
 ; 10 5 5 5 -> 3
 ; 6 6 9 9 -> 4
-(define (piles-score-comb piles comb-sum)
- (define nums (map (cut send <> get-value) piles))
+(define (hand-score-comb hands comb-sum)
+ (define nums (map (cut send <> get-value) hands))
  (define init-lst (make-list comb-sum 0))
  (last
   (for/fold ([lst init-lst]) ([i nums])
