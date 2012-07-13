@@ -15,6 +15,7 @@
 (define number-of-cribs (* number-of-players cribs-per-player))
 (define hands-per-player (- cards-per-player cribs-per-player))
 (define total-hands (* number-of-players hands-per-player))
+(define allowed-card-sum 31)
 
 ; (A A B B B C) -> ((A A) (B B B) (C))
 (define (group ls)
@@ -46,6 +47,12 @@
   (define/public (set-cards-state! cds state)
    (remove-cards! cds)
    (append-cards! cds state))
+  (define/public (cards-have)
+   (map car (filter (lambda (x) (eq? (cdr x) 'have)) cards)))
+  (define/public (playable? pile)
+   (define sum (crib-cards-sum pile))
+   (define smallest (apply min (map crib-card-value (cards-have))))
+   (<= smallest (- allowed-card-sum sum)))
   (define/public (realign-card table region)
    (send table move-cards-to-region (map car cards) region))
   (define/public (show-card table region-from region-to do-face-up)
@@ -78,11 +85,18 @@
     [players pls]
     [phase 'select-crib]))))
 
+(define-syntax with-player-num
+ (syntax-rules ()
+  ((_ () body ...) (begin body ...))
+  ((_ ((pl player-num) rest ... ) body ...)
+   (let ([pl (list-ref (get-field players this) player-num)]) (with-player-num (rest ...) body ...)))))
+
 (define-syntax define/delegate-playernum
  (syntax-rules ()
   ((_ (func player-num rest ...))
    (define/public (func player-num rest ...)
-    (send (list-ref (get-field players this) player-num) func rest ...)))))
+    (with-player-num ((pl player-num))
+      (send pl func rest ...))))))
 
 (define crib-game%
  (class object%
@@ -94,16 +108,28 @@
   (init-field [phase #f])
   (define/public (card-owner card)
    (for/or ([p players] [i (in-naturals)]) (if (send p have-card? card) i #f)))
+  (define/public (clear-pile)
+   (set! pile '()))
   (define/public (append-pile! card)
    (set! pile (append pile (list card))))
   (define/public (select-crib player-num cards)
-   (define pl (list-ref players player-num))
-   (send pl remove-cards! cards)
-   (set! crib (append crib cards)))
+   (with-player-num ((pl player-num))
+    (send pl remove-cards! cards)
+    (set! crib (append crib cards))))
   (define/public (play-card player-num card)
-   (define pl (list-ref players player-num))
-   (send pl set-cards-state! (list card) 'del)
-   (append-pile! card))
+   (with-player-num ((pl player-num))
+    (send pl set-cards-state! (list card) 'del)
+    (append-pile! card)))
+  (define/public (playable? player-num)
+   (with-player-num ((pl player-num))
+    (send pl playable? pile)))
+  (define/public (next-player current)
+   (define opponent (if (= current 0) 1 0))
+   (cond
+    ((playable? opponent) opponent)
+    ((playable? current) current)
+    (else #f)))
+
   (define/delegate-playernum (show-card player-num table region-from region-to do-face-up))
   (define/delegate-playernum (realign-card player-num table region))))
 
@@ -134,3 +160,10 @@
   (for/fold ([lst init-lst]) ([i nums])
    (define add-from (append (make-list (- i 1) 0) '(1) (take lst (- comb-sum i))))
    (map + add-from lst))))
+
+(define (crib-card-value card)
+ (let ([v (send card get-value)])
+  (if (> v 10) 10 v)))
+
+(define (crib-cards-sum cards)
+ (for/sum ([c cards]) (crib-card-value c)))
