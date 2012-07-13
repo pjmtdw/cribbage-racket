@@ -2,7 +2,7 @@
 (require srfi/1 srfi/26 games/cards racket/class)
 
 (provide start-game net-port net-host net-mode net-obj
- card->hash hash->card cribs-per-player number-of-cribs cribs-per-player)
+ card->hash hash->card cribs-per-player number-of-cribs cribs-per-player total-hands)
 
 (define net-port (make-parameter 12345))
 (define net-host (make-parameter "localhost"))

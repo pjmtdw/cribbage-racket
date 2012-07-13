@@ -41,6 +41,8 @@
    (define y (region-y region))
    (send table card-to-front card)
    (send table move-card card  x y))
+  (define (own-card? card)
+   (= player-num (send game card-owner card)))
   (define/public (phase-choose-crib)
    (show-message "please choose two crib cards")
    (define (move-to-crib card)
@@ -48,22 +50,14 @@
      (if (= dealer-num player-num) region-mycrib region-opcrib))
     (send table card-face-down card)
     (move-card-aligned card reg number-of-cribs (length (get-field crib game))))
-   (define curth (current-thread))
-   (send (net-obj) add-handler 'select-crib
-    (lambda (hash)
-     (let ([card (hash->card hash)])
-      (move-to-crib card)
-      (send game select-crib opponent-num (list card))
-      (thread-send curth 'select-crib))))
    (define selected-crib 0)
-   (send table set-single-click-action
-    (lambda (card)
-     (when (and (< selected-crib cribs-per-player) (= player-num (send game card-owner card) ))
-      (move-to-crib card)
-      (send game select-crib player-num (list card))
-      (set! selected-crib (+ selected-crib 1))
-      (send (net-obj) send-value (list 'select-crib (card->hash card)))
-      (thread-send curth 'select-crib))))
+   (click-action-and-handler 'select-crib card
+    ([and (< selected-crib cribs-per-player) (own-card? card)]
+     (move-to-crib card)
+     (send game select-crib player-num (list card))
+     (set! selected-crib (+ selected-crib 1)))
+    ((move-to-crib card)
+     (send game select-crib opponent-num (list card))))
    (let loop ()
     (unless (>= (length (get-field crib game)) number-of-cribs)
       (thread-receive)
@@ -74,7 +68,26 @@
   (define/public (phase-play-card)
    (send game realign-card opponent-num table region-opponent)
    (send game realign-card player-num table region-myown)
-   (show-message "now playing"))
+   (show-message "now playing")
+   (define nums-in-ground 0)
+   (define (move-to-ground card)
+    (send table card-face-up card)
+    (move-card-aligned card region-ground total-hands nums-in-ground)
+    (set! nums-in-ground (+ 1 nums-in-ground)))
+   (click-action-and-handler 'play-card card
+    ([and (< nums-in-ground total-hands) (own-card? card)]
+      (move-to-ground card)
+         ;TODO: (send game play-card ...)
+      )
+    ((move-to-ground card)
+     ;TODO: (send game play-card ...)
+    )
+    )
+   (let loop ()
+    (unless (>= nums-in-ground total-hands)
+      (thread-receive)
+      (loop)
+      )))
 
   (define/public (main)
    ; (start-game) must be called after (random-seed) function since both server and client have to use same seed.
@@ -94,3 +107,20 @@
    (phase-choose-crib)
    (phase-play-card)
    )))
+
+(define-syntax click-action-and-handler
+ (syntax-rules ()
+  ((_ sym card (condition action ...) ( handler ...))
+   (begin
+    (let ([curth (current-thread)])
+     (send (get-field table this) set-single-click-action
+      (lambda (card)
+       (when condition
+        action ...
+        (send (net-obj) send-value (list sym (card->hash card)))
+        (thread-send curth sym))))
+     (send (net-obj) add-handler sym
+      (lambda (hash)
+       (let ([card (hash->card hash)])
+        handler ...
+        (thread-send curth sym)))))))))
