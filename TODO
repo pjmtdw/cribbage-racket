@@ -5,4 +5,5 @@
 * GUI Interface for choosing host/port option
 * Judge Winner for 61 point or 121 point
 * Show Cribbage Board
+* Show score you acquired during the play phase
 * Bug Fix: Sometimes the opponent card does not appear

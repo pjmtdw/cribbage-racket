@@ -1,6 +1,6 @@
 #lang racket
 
-(require racket/serialize "base.rkt" "score.rkt")
+(require racket/serialize srfi/26 "base.rkt" "score.rkt")
 
 (provide connect-base% ai-random% ai-normal%)
 
@@ -54,7 +54,7 @@
   (define/override (send-value v)
    (define game (get-field game (gui)))
    (define player (list-ref (get-field players game) (get-field opponent-num (gui))))
-   (define cards-have (send player cards-have))
+   (define cards-have (filter (cut send game playable-card? <>) (send player cards-have)))
    (case (car v)
     ('select-crib #f)
     ('generate-crib 
@@ -62,7 +62,10 @@
        (super send-value `(select-crib ,(card->hash c)))))
     ('play-card #f)
     ('generate-move
-     (super send-value `(play-card ,(card->hash (generate-move game cards-have)))))
+     (let ([c (generate-move game cards-have)])
+      (unless (send game playable-card? c)
+       (error "AI generated illegal move"))
+      (super send-value `(play-card ,(card->hash c)))))
     (else
      (super send-value v))))
 

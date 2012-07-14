@@ -136,10 +136,13 @@
        (nextp 
         (set! current-player nextp))
        (else
-        (send table cards-face-down (get-field pile game))
         ;Last Card Score
         (send game add-score current-player 1)
         (print-score current-player "Last Card: +1")
+        ; Sleep for a while so that player can see the last card
+        (show-message "last card")
+        (sleep 2)
+        (send table cards-face-down (get-field pile game))
         (send game clear-pile)
         (set! current-player (send game next-player current-player)))))
      (show-scores)
