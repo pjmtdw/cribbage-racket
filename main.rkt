@@ -26,6 +26,7 @@
   ('server (new net-server% [port (net-port)]))
   ('client (new net-client% [host (net-host)] [port (net-port)] ))
   ('random (new ai-random%))
+  ('normal (new ai-normal%))
   (else (error (format "unknown ai type: ~a" (ai-type))))))
 (case (ai-type)
  ('server

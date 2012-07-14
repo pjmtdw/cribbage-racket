@@ -16,7 +16,7 @@
    (else (loop (cdr xs) (list (car xs)) (cons ys res))))))
 
 (define (hand-score-all starter cards)
- (define cards-with-starter (cons starter cards))
+ (define cards-with-starter (if starter (cons starter cards) cards))
  `((fifteen . ,(hand-score-fifteen cards-with-starter))
    (pair . ,(hand-score-pair cards-with-starter))
    (run . ,(hand-score-run cards-with-starter))
@@ -80,7 +80,7 @@
 
 (define (hand-score-flush starter cards)
  (define suits (map (cut send <> get-suit) cards))
- (define starter-suit (send starter get-suit))
+ (define starter-suit (if starter (send starter get-suit) #f))
  (define is-flush (= (length (car (group suits))) (length suits)))
  (cond
   ((and is-flush (eq? starter-suit (car suits))) 5)
@@ -88,9 +88,12 @@
   (else 0)))
 
 (define (hand-score-his-nob starter cards)
- (define starter-suit (send starter get-suit))
- (if (memf (lambda (c) (and (eq? (send c get-suit) starter-suit) (= (send c get-value) 11) )) cards)
+ (cond
+  (starter
+   (define starter-suit (send starter get-suit))
+   (if (memf (lambda (c) (and (eq? (send c get-suit) starter-suit) (= (send c get-value) 11) )) cards)
   1 0))
+  (else 0)))
 
 (define (crib-card-value card)
  (let ([v (send card get-value)])

@@ -2,6 +2,8 @@
 [Version] 0.00 beta
 [Author] Haruhiro Yoshimoto <hpnpwd@gmail.com>
 [Description] Cribbage is a card game created in early 17th century
+[Features]
+  Playing over TCP Network
 [Required]
   Racket v5.2.1
 [Usage]

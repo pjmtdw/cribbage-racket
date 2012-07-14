@@ -9,7 +9,7 @@
 (define net-port (make-parameter 12345))
 (define net-host (make-parameter "localhost"))
 (define ai-obj (make-parameter #f))
-(define ai-type (make-parameter 'random))
+(define ai-type (make-parameter 'normal))
 
 (define cards-per-player 6)
 (define cribs-per-player 2)

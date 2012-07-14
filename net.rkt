@@ -7,9 +7,8 @@
 (define (ai-obj->symbol obj)
  (if (is-a? obj net-server%) 'server 'client))
 
-
 (define net-client%
- (class ai-base%
+ (class connect-base%
   (super-new)
   (init-field port)
   (init-field host)
@@ -28,7 +27,7 @@
    (send this start-recv-thread))))
 
 (define net-server%
- (class ai-base%
+ (class connect-base%
   (super-new)
   (init-field port)
   (define/public (start)
