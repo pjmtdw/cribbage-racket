@@ -1,13 +1,15 @@
 #lang racket
 (require srfi/1 srfi/26 games/cards racket/class "score.rkt")
 
-(provide start-game net-port net-host net-mode net-obj
+(provide start-game net-port net-host ai-type ai-obj gui
  card->hash hash->card cribs-per-player number-of-cribs cribs-per-player total-hands)
+
+(define gui (make-parameter #f))
 
 (define net-port (make-parameter 12345))
 (define net-host (make-parameter "localhost"))
-(define net-mode (make-parameter #f))
-(define net-obj (make-parameter #f))
+(define ai-obj (make-parameter #f))
+(define ai-type (make-parameter 'random))
 
 (define cards-per-player 6)
 (define cribs-per-player 2)

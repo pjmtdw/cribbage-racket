@@ -27,6 +27,9 @@
      (send snip set-style new-style)))
   snip))
 
+(define (single-mode?)
+ (not (or (eq? 'server (ai-type)) (eq? 'client (ai-type)))))
+
 (define crib-gui
  (class object%
   (super-new)
@@ -71,6 +74,8 @@
      (set! selected-crib (+ selected-crib 1)))
     ((move-to-crib card)
      (send game select-crib opponent-num (list card))))
+   (when (single-mode?)
+    (send (ai-obj) send-value '(generate-crib)))
    (let loop ()
     (unless (>= (length (get-field crib game)) number-of-cribs)
       (thread-receive)
@@ -104,6 +109,9 @@
     (print-score dealer-num "Two for his heels: +2")
     (show-scores))
    (show-whose-turn)
+   (define (require-generate-move)
+    (when (and (single-mode?) current-player (= current-player opponent-num))
+     (send (ai-obj) send-value '(generate-move))))
    (define (move-to-ground card)
     (send table card-face-up card)
     (move-card-aligned card region-ground total-hands nums-in-ground)
@@ -115,25 +123,29 @@
       )
     ((move-to-ground card)
      (send game play-card opponent-num card)))
+   (require-generate-move)
    (let loop ()
     (unless (>= nums-in-ground total-hands)
-      (thread-receive)
-      (let* ([score (send game pile-score)]
-             [sum (for/sum ([i score]) (cdr i))])
-       (send game add-score current-player sum)
-       (when (> sum 0) (print-score current-player "Score: +~a" (filter (lambda (x) (> (cdr x) 0)) score))))
-      (let ([nextp (send game next-player current-player)])
-       (if nextp (set! current-player nextp)
-        (begin
-         (send table cards-face-down (get-field pile game))
-         ;Last Card Score
-         (send game add-score current-player 1)
-         (print-score current-player "Last Card: +1")
-         (send game clear-pile)
-         (set! current-player (send game next-player current-player)))))
-      (show-scores)
-      (show-whose-turn)
-      (loop)
+     (thread-receive)
+     (let* ([score (send game pile-score)]
+            [sum (for/sum ([i score]) (cdr i))])
+      (send game add-score current-player sum)
+      (when (> sum 0) (print-score current-player "Score: +~a" (filter (lambda (x) (> (cdr x) 0)) score))))
+     (let ([nextp (send game next-player current-player)])
+      (cond 
+       (nextp 
+        (set! current-player nextp))
+       (else
+        (send table cards-face-down (get-field pile game))
+        ;Last Card Score
+        (send game add-score current-player 1)
+        (print-score current-player "Last Card: +1")
+        (send game clear-pile)
+        (set! current-player (send game next-player current-player)))))
+     (show-scores)
+     (show-whose-turn)
+     (require-generate-move)
+     (loop)
       ))
    (send table set-single-click-action identity))
 
@@ -153,7 +165,7 @@
        (set! received (cons (thread-receive) received))
        (unless (check-cond)
         (loop)))))
-   (send (net-obj) set-handler 'next-game
+   (send (ai-obj) set-handler 'next-game
     (lambda _
      (thread-send curth 'next-game)))
    (define button-region (make-button-region 500 400 50 25 "next" (lambda _ (thread-send curth 'next))))
@@ -172,13 +184,13 @@
    (doit 'next 2 dealer-num "dealer")
    (doit 'next 3 #f "crib")
    (send table remove-region button-region)
-   (send (net-obj) send-value '(next-game))
+   (send (ai-obj) send-value '(next-game))
    (do-receive 'next-game 1))
 
   (define/public (main)
    ; (start-game) must be called after (random-seed) function since both server and client have to use same seed.
-   (set-values-by-net-mode! (player-num opponent-num) (0 1))
-   (set-values-by-net-mode! (player-color opponent-color) ("orange" "purple"))
+   (set-values-by-ai-type! (player-num opponent-num) (0 1))
+   (set-values-by-ai-type! (player-color opponent-color) ("orange" "purple"))
    (let loop ()
     (if game
      (set-field! game this (apply start-game (map (cut send game get-score <>) '(0 1))))
@@ -196,14 +208,14 @@
     (send game clear-game table)
     (loop)))))
 
-(define-syntax set-values-by-net-mode!
+(define-syntax set-values-by-ai-type!
  (syntax-rules ()
   ((_ (p-k o-k) (p-v o-v))
    (let-values ([(p o)
-    (case (net-mode)
+    (case (ai-type)
      ('server
       (values p-v o-v))
-     ('client
+     (else
       (values o-v p-v)))])
     (set! p-k p)
     (set! o-k o)))))
@@ -217,9 +229,9 @@
       (lambda (card)
        (when condition
         action ...
-        (send (net-obj) send-value (list sym (card->hash card)))
+        (send (ai-obj) send-value (list sym (card->hash card)))
         (thread-send curth sym))))
-     (send (net-obj) set-handler sym
+     (send (ai-obj) set-handler sym
       (lambda (hash)
        (let ([card (hash->card hash)])
         handler ...
