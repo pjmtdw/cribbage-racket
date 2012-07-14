@@ -1,5 +1,7 @@
 [App Name] Cribbage
-[Version] 0.00 beta
+[Version] 1.00
+[Target OS] Windows, Linux, MacOS, and so on (which Racket Platform works)
+[License] BSD (see COPYING for details)
 [Author] Haruhiro Yoshimoto <hpnpwd@gmail.com>
 [Description] Cribbage is a card game created in early 17th century
 [Features]
@@ -7,5 +9,9 @@
 [Required]
   Racket v5.2.1
 [Usage]
-  See
+  Act as server
+  $ racket main.rkt -p <port> -s
+  Act as client
+  $ racket main.rkt -p <port> -c --host <server_hostname>
+  For details, See
   $ racket main.rkt --help
