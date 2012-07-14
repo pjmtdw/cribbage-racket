@@ -1,4 +1,5 @@
 #lang racket
+
 (require srfi/26)
 
 (provide crib-cards-sum crib-card-value allowed-card-sum hand-score-all pile-score-all)

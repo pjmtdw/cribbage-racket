@@ -1,5 +1,6 @@
 #lang racket
 (require games/cards racket/gui "base.rkt" srfi/26)
+
 (provide crib-gui)
 
 (define-syntax region-field
@@ -132,8 +133,8 @@
       (send game add-score current-player sum)
       (when (> sum 0) (print-score current-player "Score: +~a" (filter (lambda (x) (> (cdr x) 0)) score))))
      (let ([nextp (send game next-player current-player)])
-      (cond 
-       (nextp 
+      (cond
+       (nextp
         (set! current-player nextp))
        (else
         ;Last Card Score

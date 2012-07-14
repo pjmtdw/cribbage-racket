@@ -18,7 +18,6 @@
 (define hands-per-player (- cards-per-player cribs-per-player))
 (define total-hands (* number-of-players hands-per-player))
 
-
 ; (with-split-list '(a b c d e f) ((x 2) (y 3)) (list y x)) -> ((c d e) (a b))
 (define-syntax with-split-list
  (syntax-rules ()
@@ -69,6 +68,7 @@
 (define cards-hash #f)
 
 ; Since card<%> is not serializable, we store the hash code of all the cards
+; TODO: is there any way to add 'serializable' feature to card<%> ?
 (define (card->hash card) (list (send card get-suit) (send card get-value)))
 (define (hash->card hash) (hash-ref cards-hash hash))
 (define (make-cards-hash cards)

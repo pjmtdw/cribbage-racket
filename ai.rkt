@@ -1,19 +1,15 @@
 #lang racket
 
-(require racket/serialize srfi/26 "base.rkt" "score.rkt")
+(require racket/generator racket/serialize srfi/26 "base.rkt" "score.rkt")
 
 (provide connect-base% ai-random% ai-normal%)
 
-; USAGE: (combination2 for*/list ((x y) list) body)
-; you can use for*, for*/list, for*/fold, ... as forstar
-;-> (combination2 for*/list ((s t) '(a b c d e)) (list s t))
-;'((a b) (a c) (a d) (a e) (b c) (b d) (b e) (c d) (c e) (d e))
-(define-syntax combination2
- (syntax-rules ()
-  ((_ forstar ((x y) ls) body ...)
-   (forstar ([i (in-range (length ls))] [y (drop ls (+ 1 i))])
-    (let ([x (list-ref ls i)])
-     body ...)))))
+(define (in-combination ls depth)
+ (in-generator
+  (let go ([d depth] [l ls] [r '()])
+   (if (= d 0) (yield (reverse r))
+    (for ([x l] [i (in-naturals)])
+     (go (- d 1) (drop l (+ i 1)) (cons x r)))))))
 
 (define (list-subtract s t)
  (set->list (set-subtract (list->set s) (list->set t))))
@@ -47,6 +43,8 @@
 (define ai-base%
  (class connect-base%
   (super-new)
+  ; you must override generate-crib and generate-move in the derived classes
+  ; TODO: is there any way to force it using something like Interface ?
   (define/public (generate-crib game cards-have)
    '())
   (define/public (generate-move game cards-have)
@@ -57,7 +55,7 @@
    (define cards-have (filter (cut send game playable-card? <>) (send player cards-have)))
    (case (car v)
     ('select-crib #f)
-    ('generate-crib 
+    ('generate-crib
       (for ([c (generate-crib game cards-have)])
        (super send-value `(select-crib ,(card->hash c)))))
     ('play-card #f)
@@ -91,9 +89,9 @@
   (define/override (generate-crib game cards)
    (car
     (argmax cdr
-     (combination2 for*/list ([s t] cards)
-      (let [(cds (list-subtract cards (list s t)))]
-       (cons (list s t) (for/sum ([s (hand-score-all #f cds)]) (cdr s))))))))
+     (for/list ([cs (in-combination cards 2)])
+      (let ([cds (list-subtract cards cs)])
+       (cons cs (for/sum ([s (hand-score-all #f cds)]) (cdr s))))))))
 
   (define/override (generate-move game cards)
    (define pile (get-field pile game))
